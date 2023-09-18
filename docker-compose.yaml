@@ -1,0 +1,47 @@
+version: '3'
+ 
+networks:
+  desafionet:
+    driver: bridge
+
+services:
+
+  db:
+    build:
+      context: ./db
+    container_name: db
+    command: --innodb-use-native-aio=0
+    restart: always
+    tty: true
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - desafionet
+
+  app:
+    build:
+      context: ./node
+    container_name: app
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh
+    tty: true
+    volumes:
+      - ./node:/usr/src/app
+    networks:
+      - desafionet
+    depends_on:
+      - db
+    command: bash -c "npm install && node index.js"
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    networks:
+      - desafionet
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+
+## docker-compose up -d
